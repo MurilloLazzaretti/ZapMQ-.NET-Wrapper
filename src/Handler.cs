@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ZapMQWrapper
+namespace ZapMQ
 {
-    public delegate string ZapMQHandler(ZapJSONMessage pMessage, out bool pProcessing);
+    public delegate object ZapMQHandler(ZapJSONMessage pMessage, out bool pProcessing);
 
-    public delegate string ZapMQHandlerRPC(ZapJSONMessage pMessage);
+    public delegate void ZapMQHandlerRPC(ZapJSONMessage pMessage);
 }

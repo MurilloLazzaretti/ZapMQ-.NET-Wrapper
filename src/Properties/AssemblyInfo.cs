@@ -4,12 +4,12 @@ using System.Runtime.InteropServices;
 
 // As informações gerais sobre um assembly são controladas por
 // conjunto de atributos. Altere estes valores de atributo para modificar as informações
-// associadas a um assembly.
-[assembly: AssemblyTitle("sample")]
+// associada a um assembly.
+[assembly: AssemblyTitle("ZapMQWrapper1")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("sample")]
+[assembly: AssemblyProduct("ZapMQWrapper1")]
 [assembly: AssemblyCopyright("Copyright ©  2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // O GUID a seguir será destinado à ID de typelib se este projeto for exposto para COM
-[assembly: Guid("7f0714a9-3fa1-4faf-b94f-bf30acd8fd60")]
+[assembly: Guid("00940ddc-31e6-483d-a48e-87b66ad39afc")]
 
 // As informações da versão de um assembly consistem nos quatro valores a seguir:
 //

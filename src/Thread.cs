@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
-namespace ZapMQWrapper
+namespace ZapMQ
 {
     public class ZapMQThread
     {
@@ -30,24 +30,26 @@ namespace ZapMQWrapper
             {
                 if (!ProcessingMessage)
                 {
-                    foreach (var Queue in Core.Queues)
+                    lock (Core.Queues)
                     {
-                        ZapJSONMessage JSONMessage = Core.GetMessage(Queue.Name);
-                        if (JSONMessage != null)
+                        Core.Queues.ForEach(Queue =>
                         {
-                            ProcessingMessage = true;
-                            string RPCAnswer = Queue.Handler(JSONMessage, out ProcessingMessage);
-                            if ((RPCAnswer != null) && (JSONMessage.RPC))
+                            ZapJSONMessage JSONMessage = Core.GetMessage(Queue.Name);
+                            if (JSONMessage != null)
                             {
-                                Core.SendRPCResponse(Queue.Name, JSONMessage.Id, RPCAnswer);
+                                ProcessingMessage = true;
+                                object RPCAnswer = Queue.Handler(JSONMessage, out ProcessingMessage);
+                                if ((RPCAnswer != null) && (JSONMessage.RPC))
+                                {
+                                    Core.SendRPCResponse(Queue.Name, JSONMessage.Id, RPCAnswer);
+                                }
                             }
-                        }
+                        });
                     }
                 }
                 Thread.Sleep(100);
             }
         }
-
     }
 
     public delegate void EventRPCExpired(ZapJSONMessage pMessage);

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ZapMQWrapper
+namespace ZapMQ
 {
     public class ZapMQQueue
     {

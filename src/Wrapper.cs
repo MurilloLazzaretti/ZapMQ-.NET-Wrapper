@@ -2,19 +2,22 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
 
-namespace ZapMQWrapper
+namespace ZapMQ
 {
     public class ZapMQWrapper
     {
         private ZapMQ Core { get; set; }
         private ZapMQThread Thread { get; set; }
+        private List<ZapMQRPCThread> ThreadsRPC {get; set;}
         public EventRPCExpired OnRPCExpired { get; set; }
         public ZapMQWrapper(string pHost, int pPort)
         {
             Core = new ZapMQ(pHost, pPort);
             Thread = new ZapMQThread(Core);
             Thread.Start();
+            ThreadsRPC = new List<ZapMQRPCThread>();
         }
         public void Bind(string pQueueName, ZapMQHandler pHandler)
         {
@@ -23,7 +26,10 @@ namespace ZapMQWrapper
                 ZapMQQueue Queue = new ZapMQQueue();
                 Queue.Name = pQueueName;
                 Queue.Handler = pHandler;
-                Core.Queues.Add(Queue);
+                lock (Core.Queues)
+                {
+                    Core.Queues.Add(Queue);
+                }
             }
             else
             {
@@ -35,7 +41,10 @@ namespace ZapMQWrapper
             ZapMQQueue Queue = Core.FindQueue(pQueueName);
             if (Queue != null)
             {
-                Core.Queues.Remove(Queue);
+                lock (Core.Queues)
+                {
+                    Core.Queues.Remove(Queue);
+                }
             }
         }
         public bool IsBinded(string pQueueName)
@@ -43,7 +52,7 @@ namespace ZapMQWrapper
             ZapMQQueue Queue = Core.FindQueue(pQueueName);
             return Queue != null;
         }
-        public bool SendMessage(string pQueueName, string pMessage, int pTTL)
+        public bool SendMessage(string pQueueName, object pMessage, int pTTL = 0)
         {
             if (pQueueName == string.Empty)
             {
@@ -70,7 +79,7 @@ namespace ZapMQWrapper
                 throw new Exception("You cannot send message to a Queue self binded");
             }
         }
-        public bool SendRPCMessage(string pQueueName, string pMessage, ZapMQHandlerRPC pHandler, int pTTL = 0)
+        public bool SendRPCMessage(string pQueueName, object pMessage, ZapMQHandlerRPC pHandler, int pTTL = 0)
         {
             if (pQueueName == string.Empty)
             {
@@ -80,7 +89,7 @@ namespace ZapMQWrapper
             {
                 ZapJSONMessage JSONMessage = new ZapJSONMessage();
                 JSONMessage.Body = pMessage;
-                JSONMessage.RPC = false;
+                JSONMessage.RPC = true;
                 JSONMessage.TTL = pTTL;
                 try
                 {
@@ -88,6 +97,7 @@ namespace ZapMQWrapper
                     if (JSONMessage.Id != string.Empty)
                     {
                         ZapMQRPCThread responseThread = new ZapMQRPCThread(Core.Host, Core.Port, pHandler, JSONMessage, pQueueName, OnRPCExpired, pTTL);
+                        ThreadsRPC.Add(responseThread);
                         responseThread.Start();
                         return true;
                     }
@@ -104,6 +114,14 @@ namespace ZapMQWrapper
             else
             {
                 throw new Exception("You cannot send message to a Queue self binded");
+            }
+        }
+        public void StopThreads()
+        {
+            Thread.Stop();
+            foreach (var thread in ThreadsRPC)
+            {
+                thread.Stop();
             }
         }
     }

@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Net.Http;
+using Newtonsoft.Json;
+using System.Collections.Concurrent;
 
-namespace ZapMQWrapper
+namespace ZapMQ
 {
     public class ZapMQ
     {
@@ -25,16 +27,7 @@ namespace ZapMQWrapper
         }
         public ZapMQQueue FindQueue(string pQueueName)
         {
-            ZapMQQueue Queue = null;
-            foreach (var item in Queues)
-            {
-                if (item.Name == pQueueName)
-                {
-                    Queue = item;
-                    break;
-                }
-            }
-            return Queue;
+            return Queues.Find(x => x.Name == pQueueName);
         }
 
         public ZapJSONMessage GetMessage(string pQueueName)
@@ -73,7 +66,15 @@ namespace ZapMQWrapper
                 ZapMQMethodsClient methodsClient = new ZapMQMethodsClient(Connection);
                 try
                 {
-                    return ZapJSONMessage.FromJSON(methodsClient.GetRPCMessage(pQueueName, pIdMessage));
+                    string content = methodsClient.GetRPCMessage(pQueueName, pIdMessage);
+                    if (content != string.Empty)
+                    {
+                        return ZapJSONMessage.FromJSON(content);
+                    }
+                    else
+                    {
+                        return null;
+                    }
                 }
                 catch
                 {
@@ -105,7 +106,7 @@ namespace ZapMQWrapper
                 Connection.Dispose();
             }
         }
-        public void SendRPCResponse(string pQueueName, string pIdMessage, string pResponse)
+        public void SendRPCResponse(string pQueueName, string pIdMessage, object pResponse)
         {
             HttpClient Connection = CreateRestConnection();
             try
@@ -113,7 +114,7 @@ namespace ZapMQWrapper
                 ZapMQMethodsClient methodsClient = new ZapMQMethodsClient(Connection);
                 try
                 {
-                    methodsClient.UpdateRPCResponse(pQueueName, pIdMessage, pResponse);
+                    methodsClient.UpdateRPCResponse(pQueueName, pIdMessage, JsonConvert.SerializeObject(pResponse));
                 }
                 catch
                 {
