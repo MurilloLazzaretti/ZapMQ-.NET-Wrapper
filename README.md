@@ -14,7 +14,7 @@ ZapMQWrapper needs Newtonsoft.Json library installed in your project. Install it
 
 You need to create the Wrapper and provide the IP and Port of the ZapMQ service.
 
-```.net
+```cs
 using ZapMQ;
 
 {
@@ -26,7 +26,7 @@ Probably ZapMQWrapper will gona be a Field of a Form in your application or Prop
 
 Dont forget to free ZapMQWrapper when your application will terminate, this will stop all threads and kill others objects. (Please, no memory leak)
 
-```.net
+```cs
 {
     zapMQWrapper.StopThreads();
 } 
