@@ -7,8 +7,8 @@
     <ProjectGuid>{00940DDC-31E6-483D-A48E-87B66AD39AFC}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ZapMQWrapper1</RootNamespace>
-    <AssemblyName>ZapMQWrapper1</AssemblyName>
+    <RootNamespace>ZapMQWrapper</RootNamespace>
+    <AssemblyName>ZapMQWrapper</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
