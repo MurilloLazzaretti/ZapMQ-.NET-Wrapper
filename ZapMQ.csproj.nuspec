@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>ZapMQ</id>
+    <version>1.0.1</version>
+    <authors>Murillo Lazzaretti</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <!-- <icon>icon.png</icon> -->
+    <projectUrl>https://github.com/MurilloLazzaretti/ZapMQ-.NET-Wrapper</projectUrl>
+    <description>Wrapper for ZapMQ</description>
+    <releaseNotes>Initial release.</releaseNotes>
+    <copyright>$copyright$</copyright>
+    <tags>ZapMQ</tags>
+    <dependencies>
+      <group>
+        <dependency id="Newtonsoft.Json" version="6.0.1" />
+      </group>
+    </dependencies>
+  </metadata>
+</package> 

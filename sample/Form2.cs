@@ -92,7 +92,7 @@ namespace sample
             pProcessing = false;
             SetRichTextBox("*** Message Processed ***");
             MyJsonObject message = new MyJsonObject();
-            message.message = "RPC Answer Message";
+            message.message = "RPC Message awser";
             return message;
         }
 

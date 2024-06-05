@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // As informações gerais sobre um assembly são controladas por
 // conjunto de atributos. Altere estes valores de atributo para modificar as informações
 // associada a um assembly.
-[assembly: AssemblyTitle("ZapMQWrapper1")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("ZapMQWrapper")]
+[assembly: AssemblyDescription("Wrapper para troca de mensagem com ZapMQ")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("ZapMQWrapper1")]
-[assembly: AssemblyCopyright("Copyright ©  2021")]
+[assembly: AssemblyCompany("Murillo Lazzaretti")]
+[assembly: AssemblyProduct("ZapMQWrapper")]
+[assembly: AssemblyCopyright("Copyright ©  2022")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

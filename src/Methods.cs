@@ -58,7 +58,7 @@ namespace ZapMQ
         }
         public string UpdateMessage(string pQueueName, string pMessage)
         {
-            HttpResponseMessage response = Connection.GetAsync("TZapMethods/UpdateMessage/" + pQueueName + "/" + pMessage).Result;
+            HttpResponseMessage response = Connection.GetAsync("TZapMethods/UpdateMessage/" + pQueueName + "/" + System.Net.WebUtility.UrlEncode(pMessage)).Result;
             if (response.IsSuccessStatusCode)
             {
                 string contentResponse = response.Content.ReadAsStringAsync().Result;
@@ -78,8 +78,9 @@ namespace ZapMQ
             }
         }
         public string UpdateRPCResponse(string pQueueName, string pIdMessage, string pResponse)
-        {
-            HttpResponseMessage response = Connection.GetAsync("TZapMethods/UpdateRPCResponse/" + pQueueName + "/" + pIdMessage + "/" + pResponse).Result;
+        {           
+            HttpResponseMessage response = Connection.GetAsync("TZapMethods/UpdateRPCResponse/" + pQueueName + "/" + pIdMessage + "/" + System.Net.WebUtility.UrlEncode(pResponse)).Result;
+
             if (response.IsSuccessStatusCode)
             {
                 string contentResponse = response.Content.ReadAsStringAsync().Result;
