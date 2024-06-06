@@ -4,6 +4,9 @@ using System.Net.Http;
 using System.Web;
 using System.IO;
 using Newtonsoft.Json;
+using System.Text;
+using static System.Net.Mime.MediaTypeNames;
+using System.Linq;
 
 namespace ZapMQ
 {
@@ -13,6 +16,7 @@ namespace ZapMQ
         public ZapMQMethodsClient(HttpClient pConnection)
         {
             Connection = pConnection;
+            
         }
         public string GetMessage(string pQueueName)
         {
@@ -37,6 +41,7 @@ namespace ZapMQ
         }
         public string GetRPCMessage(string pQueueName, string pIdMessage)
         {
+            
             HttpResponseMessage response = Connection.GetAsync("TZapMethods/GetRPCResponse/" + pQueueName + "/" + pIdMessage).Result;
             if (response.IsSuccessStatusCode)
             {
@@ -57,8 +62,9 @@ namespace ZapMQ
             }
         }
         public string UpdateMessage(string pQueueName, string pMessage)
-        {
-            HttpResponseMessage response = Connection.GetAsync("TZapMethods/UpdateMessage/" + pQueueName + "/" + System.Net.WebUtility.UrlEncode(pMessage)).Result;
+        {           
+            HttpResponseMessage response = Connection.GetAsync("TZapMethods/UpdateMessage/" + pQueueName + "/" + System.Net.WebUtility.UrlEncode(pMessage).Replace("+", " ")).Result;
+            
             if (response.IsSuccessStatusCode)
             {
                 string contentResponse = response.Content.ReadAsStringAsync().Result;
@@ -78,9 +84,9 @@ namespace ZapMQ
             }
         }
         public string UpdateRPCResponse(string pQueueName, string pIdMessage, string pResponse)
-        {           
-            HttpResponseMessage response = Connection.GetAsync("TZapMethods/UpdateRPCResponse/" + pQueueName + "/" + pIdMessage + "/" + System.Net.WebUtility.UrlEncode(pResponse)).Result;
-
+        {
+            HttpResponseMessage response = Connection.GetAsync("TZapMethods/UpdateRPCResponse/" + pQueueName + "/" + pIdMessage + "/" + System.Net.WebUtility.UrlEncode(pResponse).Replace("+", " ")).Result;
+            
             if (response.IsSuccessStatusCode)
             {
                 string contentResponse = response.Content.ReadAsStringAsync().Result;
