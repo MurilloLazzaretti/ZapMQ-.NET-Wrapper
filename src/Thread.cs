@@ -30,15 +30,14 @@ namespace ZapMQ
             {
                 if (!ProcessingMessage)
                 {
-                    lock (Core.Queues)
-                    {
+                    lock (Core.Queues) { 
                         Core.Queues.ForEach(Queue =>
                         {
                             ZapJSONMessage JSONMessage = Core.GetMessage(Queue.Name);
                             if (JSONMessage != null)
                             {
                                 ProcessingMessage = true;
-                                object RPCAnswer = Queue.Handler(JSONMessage, out ProcessingMessage);
+                                var RPCAnswer = Queue.Handler(JSONMessage, out ProcessingMessage);
                                 if ((RPCAnswer != null) && (JSONMessage.RPC))
                                 {
                                     Core.SendRPCResponse(Queue.Name, JSONMessage.Id, RPCAnswer);
@@ -47,7 +46,7 @@ namespace ZapMQ
                         });
                     }
                 }
-                Thread.Sleep(100);
+                Thread.Sleep(300);
             }
         }
     }
@@ -98,7 +97,7 @@ namespace ZapMQ
                 {
                     Handler(response);
                 }
-                Thread.Sleep(100);
+                Thread.Sleep(300);
             }
             if ((response == null) && (IsExpired()))
             {

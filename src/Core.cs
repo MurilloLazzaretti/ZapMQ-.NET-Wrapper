@@ -78,7 +78,7 @@ namespace ZapMQ
                 }
                 catch
                 {
-                    throw new Exception("Error getting RPC message from ZapMQ Server");
+                    return null;
                 }
             }
             finally
@@ -98,7 +98,7 @@ namespace ZapMQ
                 }
                 catch
                 {
-                    throw new Exception("Error sending message to ZapMQ Server");
+                    return null;
                 }
             }
             finally
@@ -118,7 +118,7 @@ namespace ZapMQ
                 }
                 catch
                 {
-                    throw new Exception("Error sending RPC response to ZapMQ Server");
+                    //
                 }
             }
             finally
