@@ -15,7 +15,6 @@ public class WrapperTests
 
     private static ZapMQSettings Fast() => new()
     {
-        SendWaitMs = 1500,
         ReconnectMaxMs = 500,
         V2ProbeIntervalMs = 500,
         PollIntervalMs = 100
@@ -341,7 +340,7 @@ public class WrapperTests
     // ---------------------------------------------------------------- connection
 
     [Fact]
-    public async Task Without_a_server_sending_gives_up_and_says_so()
+    public async Task Without_a_server_sending_says_so_at_once()
     {
         var server = new TestServer();
         var wrapper = Wrapper(server);
@@ -350,7 +349,7 @@ public class WrapperTests
             var started = DateTime.UtcNow;
             Assert.False(wrapper.SendMessage(Queue(), new { n = 1 }));
             Assert.False(wrapper.SendRPCMessage(Queue(), new { n = 1 }, _ => { }));
-            Assert.InRange((DateTime.UtcNow - started).TotalMilliseconds, 2500, 6000);
+            Assert.InRange((DateTime.UtcNow - started).TotalMilliseconds, 0, 2000);
             Assert.Equal(0, wrapper.Protocol);
             Assert.Equal(0, wrapper.PendingRPCCount());
         }
@@ -358,6 +357,39 @@ public class WrapperTests
         {
             wrapper.StopThreads();
             await server.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task A_new_instance_consumes_and_sends_before_its_v2_connection_is_ready()
+    {
+        await using var server = await TestServer.StartNewAsync();
+        var publisher = await WrapperOn(server, 2);
+        // No time at all for the handshake: this instance never gets to know the server.
+        var slow = Fast();
+        slow.ConnectTimeoutMs = 0;
+        var consumer = Wrapper(server, slow);
+        try
+        {
+            var queue = Queue();
+            var back = Queue();
+            var received = new ConcurrentQueue<ZapJSONMessage>();
+            var returned = new ConcurrentQueue<ZapJSONMessage>();
+            publisher.Bind(back, Collect(returned));
+            consumer.Bind(queue, Collect(received, _ => new { ok = true }));
+
+            var answered = new TaskCompletionSource<ZapJSONMessage>();
+            Assert.True(publisher.SendRPCMessage(queue, new { n = 1 }, message => answered.TrySetResult(message), 5000));
+            Assert.True((bool)((JObject)(await answered.Task.WaitAsync(Patience)).Response)["ok"]!);
+
+            Assert.True(consumer.SendMessage(back, new { n = 2 }));
+            Assert.True(await Eventually.True(() => returned.Count == 1));
+            Assert.Equal(0, consumer.Protocol);
+        }
+        finally
+        {
+            consumer.StopThreads();
+            publisher.StopThreads();
         }
     }
 

@@ -60,9 +60,11 @@ namespace ZapMQ
         }
 
         // Opens the connection and greets the server. Null when the server is not there or
-        // does not speak the v2 protocol.
-        public static ZapMQSocket Open(string host, int port, ZapMQSettings settings, Action<ZapMQSocket, JObject> onPush)
+        // does not speak the v2 protocol. endpointFound tells the two apart: it is true when
+        // the server accepted the WebSocket, even if the greeting did not complete.
+        public static ZapMQSocket Open(string host, int port, ZapMQSettings settings, Action<ZapMQSocket, JObject> onPush, out bool endpointFound)
         {
+            endpointFound = false;
             ZapMQSocket socket = new ZapMQSocket(settings, onPush);
             try
             {
@@ -77,6 +79,7 @@ namespace ZapMQ
                 return null;
             }
 
+            endpointFound = true;
             socket.Touch();
             Thread reader = new Thread(socket.Receive);
             reader.IsBackground = true;

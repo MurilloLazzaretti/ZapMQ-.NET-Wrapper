@@ -15,11 +15,13 @@ What changes is how it talks to the server, and it decides that by itself:
 
 So the server and the applications can be updated in any order. When the server is replaced, the wrapper changes protocol on its own, with the application running. If the connection is lost it reconnects and binds its queues again.
 
+A new instance works over the old protocol from its first instant and moves to v2 as soon as the connection is ready, so it is never idle waiting for a handshake.
+
 Things worth knowing:
 
 - A message is handed to one consumer only, and never a second time. If the connection drops while your handler is running, the handler still runs to its end; the server keeps the message as a dead letter marked `unconfirmed`, where it can be inspected and sent again by hand.
 - `SendMessage` returns `false` when the server did not confirm the message. In 1.x it returned `true` even with the server down.
-- With no server, `SendMessage` and `SendRPCMessage` wait up to 5 seconds for it and then return `false`.
+- With no server, `SendMessage` and `SendRPCMessage` return `false`.
 - `DeduplicateMessages`, `OnDuplicateDiscarded` and `OnClaimFailure` only act while the server is 1.x. A 2.x server already delivers each message once.
 - What the wrapper has to say (connected, connection lost, confirmation refused) goes to `System.Diagnostics.Trace`, prefixed with `ZapMQ:`.
 

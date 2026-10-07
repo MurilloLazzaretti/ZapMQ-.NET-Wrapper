@@ -4,11 +4,10 @@
     // shorten them.
     internal class ZapMQSettings
     {
-        // Opening the connection and greeting the server.
-        public int ConnectTimeoutMs = 3000;
-
-        // How long SendMessage and SendRPCMessage wait for a connection before giving up.
-        public int SendWaitMs = 5000;
+        // Opening the connection and greeting the server. Generous on purpose: meanwhile the
+        // wrapper already works over v1, and a machine starting many services at once can
+        // take seconds to complete a handshake.
+        public int ConnectTimeoutMs = 10000;
 
         // A request without an answer for this long means the connection is no longer usable.
         public int RequestTimeoutMs = 30000;

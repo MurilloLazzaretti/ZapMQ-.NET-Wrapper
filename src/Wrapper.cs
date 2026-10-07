@@ -14,10 +14,12 @@ namespace ZapMQ
     //
     //   v2  A permanent connection to a 2.x server. Messages are pushed as they arrive and
     //       confirmed when the handler returns.
-    //   v1  The original polling over HTTP, used while the server is 1.x.
+    //   v1  The original polling over HTTP.
     //
-    // It starts by trying v2, falls back to v1 when the server does not know it, and keeps
-    // trying v2 from time to time, so server and wrapper can be updated in any order.
+    // It works over v1 from the first instant, exactly as 1.x did, and moves to v2 as soon as
+    // a connection is ready. Whenever there is no v2 connection it is back on v1. An instance
+    // is therefore never idle waiting for a handshake, and server and wrapper can be updated
+    // in any order.
     public class ZapMQWrapper
     {
         private const int ProtocolNone = 0;
@@ -86,7 +88,6 @@ namespace ZapMQ
 
         private readonly ZapMQSettings Settings;
         private readonly object TransportLock = new object();
-        private readonly ManualResetEventSlim TransportReady = new ManualResetEventSlim(false);
         private readonly CancellationTokenSource Stopping = new CancellationTokenSource();
         private readonly ManualResetEventSlim ConsumptionEnded = new ManualResetEventSlim(false);
         private readonly BlockingCollection<Delivery> Deliveries = new BlockingCollection<Delivery>();
@@ -121,7 +122,8 @@ namespace ZapMQ
             supervisor.Start();
         }
 
-        // 0 while there is no server, 1 or 2 for the protocol being used.
+        // 2 with a v2 connection, 1 with a server known to speak v1 only, 0 while neither is
+        // known. Sending and consuming go over v1 in the last two cases.
         internal int Protocol
         {
             get { return ProtocolInUse; }
@@ -287,26 +289,13 @@ namespace ZapMQ
 
         private bool Send(string queueName, object body, bool rpc, int ttl, ZapMQHandlerRPC handler)
         {
-            // After StopThreads there is no connection anymore; what is still sent goes the
-            // way it always did.
-            if (Volatile.Read(ref Stopped) == 1)
-            {
-                return SendV1(queueName, body, rpc, ttl, handler);
-            }
-            if (!TransportReady.Wait(Settings.SendWaitMs))
-            {
-                return false;
-            }
             ZapMQSocket socket = Socket;
-            if (socket != null)
+            if ((socket != null) && (Volatile.Read(ref Stopped) == 0))
             {
                 return SendV2(socket, queueName, body, rpc, ttl, handler);
             }
-            if (ProtocolInUse == ProtocolV1)
-            {
-                return SendV1(queueName, body, rpc, ttl, handler);
-            }
-            return false;
+            // No connection (yet, anymore, or after StopThreads): the way it always went.
+            return SendV1(queueName, body, rpc, ttl, handler);
         }
 
         private bool SendV2(ZapMQSocket socket, string queueName, object body, bool rpc, int ttl, ZapMQHandlerRPC handler)
@@ -406,7 +395,8 @@ namespace ZapMQ
             int wait = Settings.ReconnectMinMs;
             while (!Stopping.IsCancellationRequested)
             {
-                ZapMQSocket socket = ZapMQSocket.Open(Core.Host, Core.Port, Settings, OnPush);
+                bool endpointFound;
+                ZapMQSocket socket = ZapMQSocket.Open(Core.Host, Core.Port, Settings, OnPush, out endpointFound);
                 if (socket != null)
                 {
                     Stopwatch lifetime = Stopwatch.StartNew();
@@ -418,8 +408,10 @@ namespace ZapMQ
                         continue;
                     }
                 }
-                else if (SpeaksV1())
+                else if (!endpointFound && SpeaksV1())
                 {
+                    // A server without v2. One that has it but was slow to greet is tried
+                    // again shortly, below.
                     EnterV1();
                     wait = Settings.ReconnectMinMs;
                     Pause(Settings.V2ProbeIntervalMs);
@@ -467,7 +459,6 @@ namespace ZapMQ
                     Log("server at " + Core.Host + ":" + Core.Port + " speaks the 1.x protocol only");
                 }
                 ProtocolInUse = ProtocolV1;
-                TransportReady.Set();
             }
             // Answers still awaited over v2 are collected the old way from here on.
             foreach (PendingRPC rpc in PendingRPCs.Values)
@@ -495,7 +486,6 @@ namespace ZapMQ
                     return;
                 }
                 Log("connected to server " + socket.ServerVersion + " at " + Core.Host + ":" + Core.Port + " (v2)");
-                TransportReady.Set();
 
                 while (!socket.WaitClosed(Settings.PingIntervalMs))
                 {
@@ -514,7 +504,6 @@ namespace ZapMQ
                 {
                     Socket = null;
                     ProtocolInUse = ProtocolNone;
-                    TransportReady.Reset();
                 }
                 if (!Stopping.IsCancellationRequested)
                 {
@@ -614,7 +603,7 @@ namespace ZapMQ
                     {
                         Process(delivery);
                     }
-                    else if ((ProtocolInUse == ProtocolV1) && !Halted)
+                    else if ((Socket == null) && !Halted)
                     {
                         PollV1();
                     }
@@ -671,7 +660,8 @@ namespace ZapMQ
             }
             foreach (ZapMQQueue queue in queues)
             {
-                if (Stopping.IsCancellationRequested || (ProtocolInUse != ProtocolV1) || Halted)
+                // A v2 connection came up in the meantime: from here on the server pushes.
+                if (Stopping.IsCancellationRequested || (Socket != null) || Halted)
                 {
                     return;
                 }
