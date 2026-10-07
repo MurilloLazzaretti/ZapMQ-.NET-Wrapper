@@ -392,9 +392,6 @@ namespace ZapMQ
         // Runs on a thread of its own for as long as the wrapper lives.
         private void Supervise()
         {
-            int jitter = (Settings.V2StartJitterMs > 0) ? new Random(Guid.NewGuid().GetHashCode()).Next(Settings.V2StartJitterMs) : 0;
-            Pause(Settings.V2StartDelayMs + jitter);
-
             int wait = Settings.ReconnectMinMs;
             while (!Stopping.IsCancellationRequested)
             {

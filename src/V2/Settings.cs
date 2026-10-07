@@ -4,13 +4,6 @@
     // shorten them.
     internal class ZapMQSettings
     {
-        // How long a new instance works over v1 before trying v2 for the first time: a fixed
-        // part plus a random one. A service that has just started is busy starting, often
-        // along with dozens of others, and has to answer its supervisor in time; over v1 it
-        // costs exactly what 1.x did. The random part keeps them from all connecting at once.
-        public int V2StartDelayMs = 10000;
-        public int V2StartJitterMs = 10000;
-
         // Opening the connection and greeting the server. Generous on purpose: meanwhile the
         // wrapper already works over v1, and a machine starting many services at once can
         // take seconds to complete a handshake.
