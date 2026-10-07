@@ -2,6 +2,38 @@
 
 Wrapper for .NET to connect to [`ZapMQ server.`](https://github.com/MurilloLazzaretti/ZapMQ) With this wrapper you can connect easily and with a low code you can send/recive messages to/from others ZapMQ clients.
 
+## 🚀 Version 2.0
+
+Version 2.0 is a drop-in replacement for 1.x: same file name, same namespace, same classes and methods. Put the new `ZapMQWrapper.dll` in place of the old one and the application keeps working, without being recompiled.
+
+What changes is how it talks to the server, and it decides that by itself:
+
+| Server | What the wrapper does |
+|---|---|
+| ZapMQ 2.1 or newer | Keeps one connection open (protocol v2). Messages arrive the moment they are published instead of on the next poll, and each one is confirmed to the server when your handler returns |
+| ZapMQ 1.x, or 2.0 | Works as 1.x always did, polling over HTTP, and tries v2 again every minute |
+
+So the server and the applications can be updated in any order. When the server is replaced, the wrapper changes protocol on its own, with the application running. If the connection is lost it reconnects and binds its queues again.
+
+Things worth knowing:
+
+- A message is handed to one consumer only, and never a second time. If the connection drops while your handler is running, the handler still runs to its end; the server keeps the message as a dead letter marked `unconfirmed`, where it can be inspected and sent again by hand.
+- `SendMessage` returns `false` when the server did not confirm the message. In 1.x it returned `true` even with the server down.
+- With no server, `SendMessage` and `SendRPCMessage` wait up to 5 seconds for it and then return `false`.
+- `DeduplicateMessages`, `OnDuplicateDiscarded` and `OnClaimFailure` only act while the server is 1.x. A 2.x server already delivers each message once.
+- What the wrapper has to say (connected, connection lost, confirmation refused) goes to `System.Diagnostics.Trace`, prefixed with `ZapMQ:`.
+
+## 🧪 Building and testing
+
+```
+dotnet build src/ZapMQ.netstandard.csproj -c Release
+dotnet test tests/ZapMQ.Wrapper.Tests
+```
+
+The DLL is `src/bin/Release/netstandard2.0/ZapMQWrapper.dll`.
+
+The tests run the wrapper against a real server, built from the [`ZapMQ`](https://github.com/MurilloLazzaretti/ZapMQ) repository. They expect it cloned next to this one; to use another place, add `-p:ZapMQServerProject=<path to ZapMQ.Server.csproj>`.
+
 ## ⚙️ Installation
 
 Download the lastest realease of this repository and add to your project like a reference ZapMQWrapper.dll file.

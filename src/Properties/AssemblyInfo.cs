@@ -32,5 +32,11 @@ using System.Runtime.InteropServices;
 // É possível especificar todos os valores ou usar como padrão os Números de Build e da Revisão
 // usando o "*" como mostrado abaixo:
 // [assembly: AssemblyVersion("1.0.*")]
+// A versao do assembly continua 1.0.0.0 de proposito: a DLL 2.0 substitui a 1.x
+// na pasta de uma aplicacao ja compilada, sem recompilar e sem redirecionamento
+// de versao. A versao real esta em AssemblyFileVersion.
 [assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("2.0.0.0")]
+[assembly: AssemblyInformationalVersion("2.0.0")]
+
+[assembly: InternalsVisibleTo("ZapMQ.Wrapper.Tests")]

@@ -2,19 +2,19 @@
 <package >
   <metadata>
     <id>ZapMQ</id>
-    <version>1.0.1</version>
+    <version>2.0.0</version>
     <authors>Murillo Lazzaretti</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">MIT</license>
     <!-- <icon>icon.png</icon> -->
     <projectUrl>https://github.com/MurilloLazzaretti/ZapMQ-.NET-Wrapper</projectUrl>
     <description>Wrapper for ZapMQ</description>
-    <releaseNotes>Initial release.</releaseNotes>
+    <releaseNotes>Protocol v2 (push delivery with confirmation) against ZapMQ 2.1+, with automatic fallback to the 1.x protocol. Drop-in replacement for 1.x.</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>ZapMQ</tags>
     <dependencies>
       <group>
-        <dependency id="Newtonsoft.Json" version="6.0.1" />
+        <dependency id="Newtonsoft.Json" version="13.0.3" />
       </group>
     </dependencies>
   </metadata>
