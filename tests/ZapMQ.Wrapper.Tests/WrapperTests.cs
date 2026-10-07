@@ -15,6 +15,8 @@ public class WrapperTests
 
     private static ZapMQSettings Fast() => new()
     {
+        V2StartDelayMs = 0,
+        V2StartJitterMs = 0,
         ReconnectMaxMs = 500,
         V2ProbeIntervalMs = 500,
         PollIntervalMs = 100
@@ -357,6 +359,39 @@ public class WrapperTests
         {
             wrapper.StopThreads();
             await server.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task A_new_instance_starts_on_v1_and_moves_to_v2_after_its_start_delay()
+    {
+        await using var server = await TestServer.StartNewAsync();
+        var publisher = await WrapperOn(server, 2);
+        var delayed = Fast();
+        delayed.V2StartDelayMs = 2500;
+        var consumer = Wrapper(server, delayed);
+        try
+        {
+            var queue = Queue();
+            var received = new ConcurrentQueue<ZapJSONMessage>();
+            consumer.Bind(queue, Collect(received));
+
+            // Right away, with no connection at all, it already consumes.
+            Assert.True(publisher.SendMessage(queue, new { n = 1 }));
+            Assert.True(await Eventually.True(() => received.Count == 1, 1500));
+            Assert.Equal(0, consumer.Protocol);
+            Assert.Single(await server.ConnectionsAsync());
+
+            // Later it connects by itself and goes on consuming, now by push.
+            Assert.True(await Eventually.True(() => consumer.Protocol == 2));
+            Assert.True(await Consumers(server, queue, 1));
+            Assert.True(publisher.SendMessage(queue, new { n = 2 }));
+            Assert.True(await Eventually.True(() => received.Count == 2));
+        }
+        finally
+        {
+            consumer.StopThreads();
+            publisher.StopThreads();
         }
     }
 
