@@ -572,6 +572,44 @@ public class WrapperTests
         }
     }
 
+    [Fact]
+    public async Task A_handler_that_asks_for_the_stop_from_another_thread_gets_its_message_confirmed()
+    {
+        // The way a service obeys a stop order: the handler only asks for the shutdown and
+        // returns; whoever shuts down stops the wrapper before the process ends.
+        await using var server = await TestServer.StartNewAsync();
+        var worker = await WrapperOn(server, 2);
+        var control = await WrapperOn(server, 2);
+        try
+        {
+            var queue = Queue();
+            var stopped = new TaskCompletionSource();
+            worker.Bind(queue, (ZapJSONMessage _, out bool processing) =>
+            {
+                processing = false;
+                Task.Run(() =>
+                {
+                    worker.StopThreads();
+                    stopped.TrySetResult();
+                });
+                return null!;
+            });
+            Assert.True(await Consumers(server, queue, 1));
+
+            Assert.True(control.SendMessage(queue, new { Text = "STOP" }));
+
+            await stopped.Task.WaitAsync(Patience);
+            Assert.Equal(1, (long)(await server.QueueAsync(queue))!["confirmed"]!);
+            Assert.Empty(await server.DeadLettersAsync(queue));
+            Assert.Single(await server.ConnectionsAsync());
+        }
+        finally
+        {
+            worker.StopThreads();
+            control.StopThreads();
+        }
+    }
+
     // ---------------------------------------------------------------- v1 and the change of protocol
 
     [Fact]
