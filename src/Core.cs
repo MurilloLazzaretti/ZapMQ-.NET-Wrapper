@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 using System.Net.Http;
 using Newtonsoft.Json;
@@ -12,12 +13,57 @@ namespace ZapMQ
         public List<ZapMQQueue> Queues { get; set; }
         public string Host { get; set; }
         public int Port { get; set; }
-        private HttpClient CreateRestConnection()
+
+        // Um HttpClient por endpoint, compartilhado por todo o processo. Criar e
+        // descartar um HttpClient por operacao abre um socket TCP novo a cada
+        // chamada, que fica em TIME_WAIT por minutos. Com o polling de 300ms das
+        // threads isso esgota as portas efemeras do host.
+        private static readonly ConcurrentDictionary<string, HttpClient> ConnectionPool =
+            new ConcurrentDictionary<string, HttpClient>(StringComparer.OrdinalIgnoreCase);
+        private static int ServicePointConfigured;
+
+        private HttpClient GetRestConnection()
         {
+            string BaseAddress = "http://" + Host + ":" + Port.ToString() + "/datasnap/rest/";
+            return ConnectionPool.GetOrAdd(BaseAddress, CreateRestConnection);
+        }
+
+        private static HttpClient CreateRestConnection(string pBaseAddress)
+        {
+            Uri uri = new Uri(pBaseAddress);
+            ConfigureServicePoint(uri);
             HttpClient Connection = new HttpClient();
-            Uri uri = new Uri("http://" + Host + ":" + Port.ToString() + "/datasnap/rest/");
             Connection.BaseAddress = uri;
+            Connection.DefaultRequestHeaders.ConnectionClose = false;
+            Connection.DefaultRequestHeaders.Connection.Add("keep-alive");
             return Connection;
+        }
+
+        private static void ConfigureServicePoint(Uri pUri)
+        {
+            // Só tem efeito no .NET Framework; no .NET Core/5+ o SocketsHttpHandler
+            // ignora o ServicePointManager e essas chamadas viram no-op.
+            try
+            {
+                if (System.Threading.Interlocked.Exchange(ref ServicePointConfigured, 1) == 0)
+                {
+                    if (ServicePointManager.DefaultConnectionLimit < 64)
+                    {
+                        // O padrao fora do ASP.NET e 2 conexoes por endpoint, o que
+                        // serializa as filas concorrentes.
+                        ServicePointManager.DefaultConnectionLimit = 64;
+                    }
+                    ServicePointManager.Expect100Continue = false;
+                    ServicePointManager.UseNagleAlgorithm = false;
+                }
+                // Recicla a conexao periodicamente para que o client estatico
+                // acompanhe mudancas de DNS do host.
+                ServicePointManager.FindServicePoint(pUri).ConnectionLeaseTimeout = 60000;
+            }
+            catch
+            {
+                //
+            }
         }
         public ZapMQ(string pHost, int pPort)
         {
@@ -32,98 +78,66 @@ namespace ZapMQ
 
         public ZapJSONMessage GetMessage(string pQueueName)
         {
-            HttpClient Connection = CreateRestConnection();
+            ZapMQMethodsClient methodsClient = new ZapMQMethodsClient(GetRestConnection());
             try
             {
-                ZapMQMethodsClient methodsClient = new ZapMQMethodsClient(Connection);
-                try
+                string Content = methodsClient.GetMessage(pQueueName);
+                if (Content != string.Empty)
                 {
-                    string Content = methodsClient.GetMessage(pQueueName);
-                    if (Content != string.Empty)
-                    {
-                        return ZapJSONMessage.FromJSON(Content);
-                    }
-                    else
-                    {
-                        return null;
-                    }
+                    return ZapJSONMessage.FromJSON(Content);
                 }
-                catch
+                else
                 {
                     return null;
                 }
             }
-            finally
+            catch
             {
-                Connection.Dispose();
+                return null;
             }
         }
         public ZapJSONMessage GetRPCResponse(string pQueueName, string pIdMessage)
         {
-            HttpClient Connection = CreateRestConnection();
+            ZapMQMethodsClient methodsClient = new ZapMQMethodsClient(GetRestConnection());
             try
             {
-                ZapMQMethodsClient methodsClient = new ZapMQMethodsClient(Connection);
-                try
+                string content = methodsClient.GetRPCMessage(pQueueName, pIdMessage);
+                if (content != string.Empty)
                 {
-                    string content = methodsClient.GetRPCMessage(pQueueName, pIdMessage);
-                    if (content != string.Empty)
-                    {
-                        return ZapJSONMessage.FromJSON(content);
-                    }
-                    else
-                    {
-                        return null;
-                    }
+                    return ZapJSONMessage.FromJSON(content);
                 }
-                catch
+                else
                 {
                     return null;
                 }
             }
-            finally
+            catch
             {
-                Connection.Dispose();
+                return null;
             }
         }
         public string SendMessage(string pQueueName, ZapJSONMessage pMessage)
         {
-            HttpClient Connection = CreateRestConnection();
+            ZapMQMethodsClient methodsClient = new ZapMQMethodsClient(GetRestConnection());
             try
             {
-                ZapMQMethodsClient methodsClient = new ZapMQMethodsClient(Connection);
-                try
-                {
-                    return methodsClient.UpdateMessage(pQueueName, pMessage.ToJSON());
-                }
-                catch
-                {
-                    return null;
-                }
+                return methodsClient.UpdateMessage(pQueueName, pMessage.ToJSON());
             }
-            finally
+            catch
             {
-                Connection.Dispose();
+                return null;
             }
         }
         public void SendRPCResponse(string pQueueName, string pIdMessage, object pResponse)
         {
-            HttpClient Connection = CreateRestConnection();
+            ZapMQMethodsClient methodsClient = new ZapMQMethodsClient(GetRestConnection());
             try
             {
-                ZapMQMethodsClient methodsClient = new ZapMQMethodsClient(Connection);
-                try
-                {
-                    methodsClient.UpdateRPCResponse(pQueueName, pIdMessage, JsonConvert.SerializeObject(pResponse));
-                }
-                catch
-                {
-                    //
-                }
+                methodsClient.UpdateRPCResponse(pQueueName, pIdMessage, JsonConvert.SerializeObject(pResponse));
             }
-            finally
+            catch
             {
-                Connection.Dispose();
+                //
             }
         }
     }
