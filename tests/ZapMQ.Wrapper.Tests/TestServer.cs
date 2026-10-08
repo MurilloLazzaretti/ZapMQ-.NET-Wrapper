@@ -39,7 +39,10 @@ public sealed class TestServer : IAsyncDisposable
         _app = ServerHost.Build([], builder => builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ZapMQ:Port"] = Port.ToString(),
-            ["ZapMQ:V2:Enabled"] = v2 ? "true" : "false"
+            ["ZapMQ:V2:Enabled"] = v2 ? "true" : "false",
+            // Only the messaging port matters here, and many servers run side by side.
+            ["ZapMQ:Panel:Enabled"] = "false",
+            ["ZapMQ:QueueDefinitionsFile"] = Path.Combine(Path.GetTempPath(), "zapmq-wrapper-tests-queues.json")
         }));
         await _app.StartAsync();
     }
