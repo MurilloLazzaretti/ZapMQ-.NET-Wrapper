@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using ZapMQ.Server;
 
@@ -63,8 +64,25 @@ public sealed class TestServer : IAsyncDisposable
     public async Task<JObject?> QueueAsync(string name) =>
         (JObject?)((JArray)(await MetricsAsync())["queues"]!).FirstOrDefault(queue => (string?)queue["name"] == name);
 
-    public async Task<JArray> DeadLettersAsync(string queue) =>
-        JArray.Parse(await Http.GetStringAsync($"admin/dead-letters/{queue}"));
+    /// <summary>
+    /// Read straight from the broker: the administration routes are on the panel port, behind
+    /// a login, and these tests are not about the panel.
+    /// </summary>
+    public Task<JArray> DeadLettersAsync(string queue)
+    {
+        var broker = _app!.Services.GetRequiredService<global::ZapMQ.Core.Broker>();
+        return Task.FromResult(new JArray(broker.GetDeadLetters(queue).Select(letter => new JObject
+        {
+            ["id"] = letter.Id,
+            ["reason"] = letter.Reason switch
+            {
+                global::ZapMQ.Core.DeadLetterReason.Expired => "expired",
+                global::ZapMQ.Core.DeadLetterReason.NotConsumed => "not-consumed",
+                _ => "unconfirmed"
+            },
+            ["consumer"] = letter.Consumer
+        })));
+    }
 
     public async ValueTask DisposeAsync()
     {
